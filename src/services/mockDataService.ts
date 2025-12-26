@@ -58,8 +58,7 @@ const mockProjects: ProjectTextRelation[] = [
     texts: [
       {
         id: 't-main',
-        path: 'texts/冒険の始まり.md',
-        tags: ['overview']
+        path: 'texts/冒険の始まり.md'
       }
     ],
     tags: ['冒険', 'ファンタジー', '魔法'],
@@ -83,8 +82,7 @@ const mockProjects: ProjectTextRelation[] = [
     texts: [
       {
         id: 't-main',
-        path: 'texts/謎の遺跡.md',
-        tags: ['mystery']
+        path: 'texts/謎の遺跡.md'
       }
     ],
     tags: ['ミステリー', '古代', '考古学'],
@@ -108,8 +106,7 @@ const mockProjects: ProjectTextRelation[] = [
     texts: [
       {
         id: 't-main',
-        path: 'texts/宇宙の旅人.md',
-        tags: ['sf']
+        path: 'texts/宇宙の旅人.md'
       }
     ],
     tags: ['SF', '宇宙', '冒険'],
@@ -181,15 +178,24 @@ class MockDataService {
 
   /**
    * プロジェクトのタグを正規化し、重複を統合する
+   * 既存データの移行処理：text.tags → project.tags にマージ
    */
   private normalizeProjectTags(project: ProjectTextRelation): void {
-    // プロジェクトレベルのタグを正規化
-    project.tags = this.normalizeTags(project.tags || [])
-    
-    // テキストレベルのタグを削除（プロジェクトレベルに統一）
+    // 既存データの移行：テキストレベルのタグをプロジェクトレベルにマージ
+    const textTags: string[] = []
     project.texts.forEach(text => {
-      text.tags = []
+      // 型安全性のため、anyとして扱う（既存データの移行用）
+      const textAny = text as any
+      if (textAny.tags && Array.isArray(textAny.tags)) {
+        textTags.push(...textAny.tags)
+        // テキストレベルのタグを削除
+        delete textAny.tags
+      }
     })
+    
+    // プロジェクトレベルのタグとテキストレベルのタグをマージして正規化
+    const allTags = [...(project.tags || []), ...textTags]
+    project.tags = this.normalizeTags(allTags)
   }
 
   /**
@@ -280,8 +286,7 @@ class MockDataService {
       texts: [
         {
           id: mainTextId,
-          path: `texts/${scenario.title}.md`,
-          tags: []
+          path: `texts/${scenario.title}.md`
         }
       ],
       tags: this.normalizeTags(scenario.tags || []),

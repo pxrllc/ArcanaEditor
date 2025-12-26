@@ -81,11 +81,11 @@ export interface AIPolicy {
 
 /**
  * テキストドキュメント
+ * タグはプロジェクトレベルで管理されるため、ここには含まれない
  */
 export interface TextDocument {
   id: string
   path: string
-  tags: string[]
   ai?: AIPolicy // このテキストに対するAIポリシー（プロジェクト全体のポリシーを上書き）
 }
 
@@ -121,8 +121,8 @@ export interface LibraryDocument {
  *     "until": null
  *   },
  *   "texts": [
- *     { "id": "t-intro", "path": "texts/intro.md", "tags": ["overview"] },
- *     { "id": "t-qa", "path": "texts/qa.md", "tags": ["faq", "support"], "ai": { "read": "deny" } }
+ *     { "id": "t-intro", "path": "texts/intro.md", "ai": { "read": "allow" } },
+ *     { "id": "t-qa", "path": "texts/qa.md", "ai": { "read": "deny" } }
  *   ],
  *   "tags": ["overview", "faq", "support", "internal"],
  *   "tag_docs": {

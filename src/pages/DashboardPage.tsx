@@ -64,8 +64,7 @@ const DashboardPage: React.FC = () => {
   const [projectName, setProjectName] = React.useState('')
   const [generatedText, setGeneratedText] = React.useState('')
   const [isGenerating, setIsGenerating] = React.useState(false)
-  const [showTagManager, setShowTagManager] = React.useState(false)
-  const [tagPreview, setTagPreview] = React.useState('')
+  // タグ編集機能は削除（設定画面で管理）
   const [showDictionaryManager, setShowDictionaryManager] = React.useState(false)
   const [isDictionaryInputOpen, setIsDictionaryInputOpen] = React.useState(false)
   const [dictionaryItems, setDictionaryItems] = React.useState<DictionaryEntry[]>([])
@@ -260,8 +259,7 @@ const DashboardPage: React.FC = () => {
         texts: [
           {
             id: 't-main',
-            path: mainFilePath,
-            tags: [] // テキストにはタグを紐付けない（プロジェクトレベルにのみ存在）
+            path: mainFilePath
           }
         ],
         tags: Array.from(new Set((scenario.tags || []).filter(tag => tag && tag.trim().length > 0).map(tag => tag.trim()))),
@@ -342,12 +340,18 @@ const DashboardPage: React.FC = () => {
     try {
       const { project, files } = await buildProjectExportJson(selectedScenario)
       
-      // エクスポート用のプロジェクトデータを作成（texts[]からtagsを削除）
+      // エクスポート用のプロジェクトデータを作成
+      // 既存データの移行処理：texts[]からtagsを削除（型定義では既に削除済みだが、既存データ対応）
       const exportProject = {
         ...project,
         texts: project.texts.map(text => {
-          const { tags, ...textWithoutTags } = text
-          return textWithoutTags
+          // 型安全性のため、anyとして扱う（既存データの移行用）
+          const textAny = text as any
+          if (textAny.tags) {
+            const { tags, ...textWithoutTags } = textAny
+            return textWithoutTags
+          }
+          return text
         })
       }
       
@@ -533,59 +537,8 @@ const DashboardPage: React.FC = () => {
     }
   }
 
-  const handleAddTag = () => {
-    setShowTagManager(true)
-    // タグファイルのプレビューを生成（tag.mdは自動生成）
-    if (selectedScenario) {
-      // 重複を排除して表示（念のため）
-      const tags = Array.from(new Set(selectedScenario.tags || []))
-      const tagContent = tags.length > 0 
-        ? tags.map(tag => `# ${tag}`).join('\n\n')
-        : '# main'
-      setTagPreview(tagContent || '# main')
-    } else {
-      setTagPreview('# main')
-    }
-  }
-
-  const handleCloseTagManager = () => {
-    setShowTagManager(false)
-  }
-
-  const handleAddNewTag = () => {
-    const tag = prompt('タグ名を入力してください:')
-    if (tag && selectedScenario) {
-      const trimmedTag = tag.trim()
-      if (!trimmedTag) {
-        alert('タグ名を入力してください。')
-        return
-      }
-      
-      const currentTags = selectedScenario.tags || []
-      
-      // 重複チェック（大文字小文字を区別）
-      if (currentTags.includes(trimmedTag)) {
-        alert(`タグ「${trimmedTag}」は既に存在します。`)
-        return
-      }
-      
-      // タグを追加（updateScenario内で正規化される）
-      mockDataService.updateScenario(selectedScenario.id, {
-        tags: [...currentTags, trimmedTag]
-      })
-      loadScenarios()
-      
-      // プレビューを更新（正規化後のタグを使用）
-      const updatedScenario = mockDataService.getScenario(selectedScenario.id)
-      if (updatedScenario) {
-        const normalizedTags = updatedScenario.tags || []
-        const tagContent = normalizedTags.length > 0
-          ? normalizedTags.map(t => `# ${t}`).join('\n\n')
-          : '# main'
-        setTagPreview(tagContent)
-      }
-    }
-  }
+  // タグは参照のみ（編集機能は削除）
+  // タグ編集は設定画面で行う
 
   const handleAddDictionary = () => {
     if (!showDictionaryManager) {
@@ -1233,12 +1186,6 @@ const DashboardPage: React.FC = () => {
                   <span className="group-hover:text-pink-600 transition-colors duration-300">＋ 辞書の追加</span>
                 </button>
                 <button 
-                  onClick={handleAddTag}
-                  className="border-2 border-slate-200/80 bg-white/90 rounded-2xl px-4 py-3 text-sm font-bold text-left text-slate-700 hover:bg-white hover:border-purple-300/50 hover:shadow-xl hover:shadow-slate-200/50 hover:scale-[1.02] transition-all duration-300 group"
-                >
-                  <span className="group-hover:text-purple-600 transition-colors duration-300">＋ タグの追加</span>
-                </button>
-                <button 
                   onClick={handleProofreadRange}
                   className="border-2 border-slate-200/80 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 rounded-2xl px-4 py-3 text-sm font-bold text-left text-slate-700 hover:from-emerald-500/20 hover:to-teal-500/20 hover:border-emerald-300/50 hover:shadow-xl hover:shadow-emerald-200/50 hover:scale-[1.02] transition-all duration-300 flex items-center justify-between group"
                 >
@@ -1405,124 +1352,11 @@ const DashboardPage: React.FC = () => {
                   <span className="group-hover:text-pink-600 transition-colors duration-300">＋ 辞書の追加</span>
                 </button>
                 <button 
-                  onClick={handleAddTag}
-                  className="border-2 border-slate-200/80 bg-white/90 rounded-2xl px-4 py-3 text-sm font-bold text-left text-slate-700 hover:bg-white hover:border-purple-300/50 hover:shadow-xl hover:shadow-slate-200/50 hover:scale-[1.02] transition-all duration-300 group"
-                >
-                  <span className="group-hover:text-purple-600 transition-colors duration-300">＋ タグの追加</span>
-                </button>
-                <button 
                   onClick={handleProofreadRange}
                   className="border-2 border-slate-200/80 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 rounded-2xl px-4 py-3 text-sm font-bold text-left text-slate-700 hover:from-emerald-500/20 hover:to-teal-500/20 hover:border-emerald-300/50 hover:shadow-xl hover:shadow-emerald-200/50 hover:scale-[1.02] transition-all duration-300 flex items-center justify-between group"
                 >
                   <span className="group-hover:text-emerald-600 transition-colors duration-300">範囲を校正</span>
                   <ChevronRight className="h-4 w-4 group-hover:translate-x-1 group-hover:text-emerald-600 transition-all duration-300" />
-                </button>
-              </div>
-              </div>
-            </aside>
-          ) : showTagManager ? (
-            <aside className="bg-white/95 backdrop-blur-xl border-2 border-slate-200/60 rounded-3xl p-6 flex flex-col space-y-4 shadow-2xl shadow-slate-300/30 min-h-0 overflow-y-auto scrollable relative overflow-hidden">
-              {/* 装飾的なグラデーション */}
-              <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-amber-400/10 to-orange-400/10 rounded-full blur-2xl -mr-20 -mt-20"></div>
-              
-              <div className="relative z-10">
-                {/* Tag Window - モダンなデザイン */}
-                <div className="border-2 border-slate-200/60 rounded-2xl bg-gradient-to-br from-white/95 to-amber-50/30 shadow-xl shadow-slate-200/30 mb-5">
-                  <div className="flex items-center justify-between px-5 py-4 border-b-2 border-slate-200/60 bg-gradient-to-r from-amber-50/50 to-orange-50/30 rounded-t-2xl">
-                    <h3 className="text-xs font-bold text-slate-700 tracking-wider uppercase flex items-center gap-2">
-                      <div className="w-1 h-4 bg-gradient-to-b from-amber-500 to-orange-500 rounded-full"></div>
-                      タグ
-                    </h3>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleCloseTagManager}
-                      className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg p-1 transition-all duration-200"
-                      aria-label="最小化"
-                    >
-                      <Minus className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={handleCloseTagManager}
-                      className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg p-1 transition-all duration-200"
-                      aria-label="閉じる"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-                <div className="px-5 py-4 flex items-center gap-3 flex-wrap">
-                  <span className="text-sm font-bold text-slate-700">タグ</span>
-                  {selectedScenario ? (
-                    (() => {
-                      // 重複を排除してタグを表示
-                      const uniqueTags = Array.from(new Set((selectedScenario.tags || []).filter(tag => tag && tag.trim().length > 0)))
-                      if (uniqueTags.length === 0) {
-                        return (
-                          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-100 to-orange-100 rounded-xl border border-amber-200/50">
-                            <span className="text-sm font-bold text-amber-700">main</span>
-                          </div>
-                        )
-                      }
-                      return uniqueTags.map((tag, index) => (
-                        <div key={`tag-${index}-${tag}`} className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-100 to-orange-100 rounded-xl border border-amber-200/50">
-                          <span className="text-sm font-bold text-amber-700">{tag}</span>
-                        </div>
-                      ))
-                    })()
-                  ) : (
-                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-100 to-orange-100 rounded-xl border border-amber-200/50">
-                      <span className="text-sm font-bold text-amber-700">main</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Preview Area - モダンなデザイン */}
-              <div className="flex-1 border-2 border-slate-200/60 rounded-2xl bg-gradient-to-br from-white/95 to-amber-50/20 p-5 mb-5 overflow-y-auto scrollable shadow-xl shadow-slate-200/30 min-h-0">
-                <p className="text-xs text-slate-600 mb-4 font-bold flex items-center gap-2">
-                  <div className="w-1 h-3 bg-gradient-to-b from-amber-500 to-orange-500 rounded-full"></div>
-                  追加されたファイルのプレビューが出る
-                </p>
-                <div className="min-h-[200px]">
-                  {tagPreview ? (
-                    <pre className="text-sm text-slate-700 whitespace-pre-wrap font-mono bg-white/80 p-4 rounded-xl border border-slate-200/50 shadow-inner">{tagPreview}</pre>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full py-12">
-                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center mb-4">
-                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500"></div>
-                      </div>
-                      <p className="text-sm text-slate-500 font-medium">プレビューがここに表示されます</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Action Buttons Grid */}
-              <div className="grid grid-cols-2 gap-2.5 pt-4 border-t-2 border-slate-200/60">
-                <button 
-                  onClick={handleAddArticle}
-                  className="border-2 border-slate-200 bg-white/80 rounded-xl px-3 py-2.5 text-sm font-semibold text-left text-slate-700 hover:bg-white hover:border-slate-300 hover:shadow-md transition-all duration-200"
-                >
-                  ＋ 文章の追加
-                </button>
-                <button 
-                  onClick={handleAddDictionary}
-                  className="border-2 border-slate-200 bg-white/80 rounded-xl px-3 py-2.5 text-sm font-semibold text-left text-slate-700 hover:bg-white hover:border-slate-300 hover:shadow-md transition-all duration-200"
-                >
-                  ＋ 辞書の追加
-                </button>
-                <button 
-                  onClick={handleAddNewTag}
-                  className="border-2 border-slate-200/80 bg-white/90 rounded-2xl px-4 py-3 text-sm font-bold text-left text-slate-700 hover:bg-white hover:border-purple-300/50 hover:shadow-xl hover:shadow-slate-200/50 hover:scale-[1.02] transition-all duration-300 group"
-                >
-                  <span className="group-hover:text-purple-600 transition-colors duration-300">＋ タグの追加</span>
-                </button>
-                <button 
-                  onClick={handleProofreadRange}
-                  className="border-2 border-slate-200 bg-white/80 rounded-xl px-3 py-2.5 text-sm font-semibold text-left text-slate-700 hover:bg-white hover:border-slate-300 hover:shadow-md transition-all duration-200 flex items-center justify-between"
-                >
-                  <span>範囲を校正</span>
-                  <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
               </div>
@@ -1538,12 +1372,6 @@ const DashboardPage: React.FC = () => {
                   className="w-full border-2 border-slate-200/80 bg-white/90 rounded-2xl px-5 py-4 text-sm font-bold text-left text-slate-700 hover:bg-white hover:border-indigo-300/50 hover:shadow-xl hover:shadow-slate-200/50 hover:scale-[1.02] transition-all duration-300 group"
                 >
                   <span className="group-hover:text-indigo-600 transition-colors duration-300">＋ 文章の追加</span>
-                </button>
-                <button 
-                  onClick={handleAddTag}
-                  className="w-full border-2 border-slate-200/80 bg-white/90 rounded-2xl px-5 py-4 text-sm font-bold text-left text-slate-700 hover:bg-white hover:border-purple-300/50 hover:shadow-xl hover:shadow-slate-200/50 hover:scale-[1.02] transition-all duration-300 group"
-                >
-                  <span className="group-hover:text-purple-600 transition-colors duration-300">＋ タグの追加</span>
                 </button>
                 <button 
                   onClick={handleAddDictionary}
